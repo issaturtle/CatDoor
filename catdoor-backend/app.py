@@ -149,6 +149,7 @@ from skimage.metrics import structural_similarity as ssim
 from flask import Flask, Response
 from twilio.rest import Client
 import pyrebase 
+import keys
 app = Flask(__name__)
 
 # Define a global variable switch and initialize it as False
@@ -294,8 +295,8 @@ def send_frame_to_user(frame):
     global failed_attempts  # Use the global keyword to access the global failed_attempts variable
 
     # Define your Twilio account SID and auth token
-    account_sid = 'AC43344e7dd6e3c081648aa3ba6d4aac47'
-    auth_token = 'a284820c281ccc7350ff0ffedc77ed36'
+    account_sid = keys.account_sid
+    auth_token = keys.auth_token
 
     # Initialize the Twilio client
     twilio_client = Client(account_sid, auth_token)
