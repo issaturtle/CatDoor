@@ -1,2 +1,4 @@
 flask==2.3.3
 opencv-python==4.8.0.76
+pyrebase4==4.5.0
+twilio==6.63.0

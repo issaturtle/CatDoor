@@ -234,32 +234,23 @@ def print_numbers():
 # Define a function for the cat face detection and authentication
 def cat_face_detection(reference_cat_images):
     global switch  # Use the global keyword to access the global switch variable
-    
-    # Initialize the camera
     camera = cv2.VideoCapture(0)
-
-    # Initialize the ORB detector
     orb = cv2.ORB_create()
 
     while True:
         ret, frame = camera.read()
-
         # Convert the frame to grayscale for face detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalcatface.xml")
         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
         for (x, y, w, h) in faces:
             # Extract the detected cat face
             captured_cat_face = gray[y:y + h, x:x+w]
-
-            # Initialize an empty list to store SSIM scores
-            ssim_scores = []
-            
-            # Initialize an empty list to store ORB keypoints and descriptors
             orb_keypoints = []
             orb_descriptors = []
+            ssim_scores = []
+            
             
             for reference_cat_image_path in reference_cat_images:
                 # Load the reference cat image
@@ -287,7 +278,7 @@ def cat_face_detection(reference_cat_images):
                 # Match ORB descriptors between the captured face and each reference image
                 orb_matches = []
                 for reference_descriptor in orb_descriptors:
-                    # Use a matching algorithm (e.g., BFMatcher) to find matches between descriptors
+                    # find matches between descriptors
                     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
                     matches = bf.match(reference_descriptor, captured_descriptor)
 
@@ -301,12 +292,12 @@ def cat_face_detection(reference_cat_images):
                 print(f"Max SSIM Score: {max(ssim_scores):.2f}")
                 similarity_score = max_orb_matches + sum(ssim_scores)
                 print(f"Similarity Score: {similarity_score:.2f}")
-                if similarity_score > 60:  # Adjust the threshold as needed
+                if similarity_score > 60:  
                     cv2.putText(frame, "Authenticated", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     number_thread = threading.Thread(target=print_numbers)
                     number_thread.start()
                     time.sleep(5)
-                    global switch  # Declare switch as global before modifying it
+                    global switch 
                     if switch:
                         print("Switch is true")
                         number_thread.join()
