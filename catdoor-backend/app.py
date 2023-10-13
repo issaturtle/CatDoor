@@ -170,7 +170,7 @@ camera = cv2.VideoCapture(0)
 # Initialize the ORB detector
 orb = cv2.ORB_create()
 
-
+ 
 
 # Arduino signal function
 def send_signal_to_arduino():
@@ -182,8 +182,11 @@ def send_signal_to_arduino():
 def capture_frames():
     global switch
     failed_attempts = 0
-    max_failed_attempts = 6
-
+    max_failed_attempts = 15
+    message_sent = 1
+    first_time_delay = 15 
+    first_time_start = None 
+    first_time_sent = True 
     print("hello")
     while True:
         ret, frame = camera.read()
@@ -223,7 +226,7 @@ def capture_frames():
                 orb_descriptors.append(reference_descriptor)
 
             # Determine the dynamic threshold based on statistical analysis of SSIM scores
-            if sum(ssim_scores) / len(ssim_scores) > 0.4:
+            if sum(ssim_scores) / len(ssim_scores) > 0.5:
                 # Detect ORB keypoints and compute descriptors for the captured cat face
                 keypoints, captured_descriptor = orb.detectAndCompute(captured_cat_face, None)
 
@@ -266,7 +269,25 @@ def capture_frames():
 
             else:
                 cv2.putText(frame, "InCorrect Cat", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                print(f"failed_attempts: {failed_attempts}")
+                failed_attempts += 1
+                if failed_attempts >= max_failed_attempts:
+                    # Check if it's the first time to send the frame to the user
+                    if first_time_sent == False:
+                        # If it's the first time, start the delay timer
+                        if first_time_start is None:
+                            first_time_start = time.time()
 
+                        # Check if the delay timer has reached 30 seconds
+                        if time.time() - first_time_start >= first_time_delay:
+                            first_time_sent = True  
+                            first_time_start = None
+                    else:
+                        # Call a function to send the frame to the user using Twilio
+                        send_frame_to_user(captured_cat_face)
+                        first_time_sent = False 
+                    failed_attempts = 0  # Reset failed attempts counter
+            
             # Draw a rectangle around the detected cat face
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
@@ -293,28 +314,22 @@ def open_door():
     return "Door opened"
 def send_frame_to_user(frame):
     global failed_attempts  # Use the global keyword to access the global failed_attempts variable
-
+    print("Sending frame to user...")
     # Define your Twilio account SID and auth token
+    # account_sid = keys.account_sid
+    # auth_token = keys.auth_token
     account_sid = keys.account_sid
     auth_token = keys.auth_token
+    client = Client(account_sid, auth_token)
+    
+    cv2.imwrite("frame.jpg", frame)
+    message = client.messages.create(
+    from_='+18772372040',
+    body='Cat authentication failed, please check your cat door!',
+    to='+14083915281'
+    )
 
-    # Initialize the Twilio client
-    twilio_client = Client(account_sid, auth_token)
-
-    try:
-        # Save the frame as an image file
-        cv2.imwrite("failed_cat.jpg", frame)
-
-        # Send the image to the user using Twilio
-        message = twilio_client.messages.create(
-            body="Cat authentication failed multiple times. Please check the attached image.",
-            from_="+18772372040",
-            to="+14083915281"
-        )
-
-        print(f"Message sent with SID: {message.sid}")
-    except Exception as e:
-        print(f"Error sending message: {str(e)}")
+    print(message.sid)
 
 
 def hello():
