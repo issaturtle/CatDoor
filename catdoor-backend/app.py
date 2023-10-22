@@ -146,10 +146,12 @@ import cv2
 import time
 import threading
 from skimage.metrics import structural_similarity as ssim
-from flask import Flask, Response
+from flask import Flask, Response, request, jsonify
 from twilio.rest import Client
-import pyrebase 
+import firebase_admin
+from firebase_admin import credentials, auth
 import keys
+import os 
 app = Flask(__name__)
 
 # Define a global variable switch and initialize it as False
@@ -157,6 +159,8 @@ switch = False
 
 # Define the reference_cat_images as a global variable
 reference_cat_images = ["cropped/1.jpg", "cropped/2.jpg", "cropped/3.jpg"]
+
+
 
 # Define a function to print numbers from 1 to 10
 def print_numbers():
@@ -170,7 +174,43 @@ camera = cv2.VideoCapture(0)
 # Initialize the ORB detector
 orb = cv2.ORB_create()
 
- 
+cred = credentials.Certificate('credentials.json')  # Replace with your Firebase Admin SDK JSON file
+firebase_admin.initialize_app(cred)
+@app.route('/register', methods=['POST'])
+def register():
+    try:
+        request_data = request.get_json()
+        email = request_data.get('email')
+        password = request_data.get('password')
+
+        # Create a new user account using Firebase Authentication
+        user = auth.create_user(email=email, password=password)
+
+        # Return the user's Firebase UID
+        return jsonify({"uid": user.uid})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route('/signin', methods=['POST'])
+def signin():
+    try:
+        request_data = request.get_json()
+        email = request_data.get('email')
+        password = request_data.get('password')
+
+        # Sign in the user using Firebase Authentication
+        user = auth.get_user_by_email(email)
+        # Check if the provided password matches the stored password
+        auth.update_user(
+            user.uid,
+            email=email,
+            password=password
+        )
+
+        # Return the user's Firebase UID
+        return jsonify({"uid": user.uid})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 # Arduino signal function
 def send_signal_to_arduino():
@@ -182,9 +222,9 @@ def send_signal_to_arduino():
 def capture_frames():
     global switch
     failed_attempts = 0
-    max_failed_attempts = 15
+    max_failed_attempts = 20
     message_sent = 1
-    first_time_delay = 15 
+    first_time_delay = 25
     first_time_start = None 
     first_time_sent = True 
     print("hello")
@@ -226,7 +266,7 @@ def capture_frames():
                 orb_descriptors.append(reference_descriptor)
 
             # Determine the dynamic threshold based on statistical analysis of SSIM scores
-            if sum(ssim_scores) / len(ssim_scores) > 0.5:
+            if max(ssim_scores) > 0.4:
                 # Detect ORB keypoints and compute descriptors for the captured cat face
                 keypoints, captured_descriptor = orb.detectAndCompute(captured_cat_face, None)
 
@@ -261,15 +301,30 @@ def capture_frames():
                         print("Switch is False")
                 elif similarity_score <= 60:
                     cv2.putText(frame, "Incorrect Cat", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    print(f"failed_attempts with ssim or orb: {failed_attempts}")
+
                     failed_attempts += 1
+                    
                     if failed_attempts >= max_failed_attempts:
                         # Call a function to send the frame to the user using Twilio
-                        send_frame_to_user(captured_cat_face)
+                        if first_time_sent == False:
+                            # If it's the first time, start the delay timer
+                            if first_time_start is None:
+                                first_time_start = time.time()
+
+                            # Check if the delay timer has reached 30 seconds
+                            if time.time() - first_time_start >= first_time_delay:
+                                first_time_sent = True  
+                                first_time_start = None
+                        else:
+                            # Call a function to send the frame to the user using Twilio
+                            send_frame_to_user(captured_cat_face)
+                            first_time_sent = False 
                         failed_attempts = 0  # Reset failed attempts counter
 
             else:
                 cv2.putText(frame, "InCorrect Cat", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                print(f"failed_attempts: {failed_attempts}")
+                print(f"failed_attempts without ssim or orb: {failed_attempts}")
                 failed_attempts += 1
                 if failed_attempts >= max_failed_attempts:
                     # Check if it's the first time to send the frame to the user
@@ -303,6 +358,7 @@ def capture_frames():
 def index():
     return "Welcome to the cat detection and door opening system!"
 
+#get the frame sent by the camera
 @app.route('/video_feed')
 def video_feed():
     return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -312,25 +368,37 @@ def open_door():
     global switch
     switch = True
     return "Door opened"
+
+
+# Function to send the frame to the user using Twilio
 def send_frame_to_user(frame):
+    output_directory = "failed"
+
+    # Make sure the directory exists, if not, create it
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+    date_time = time.strftime("%Y%m%d-%H%M%S")
+    image_filename = f"frame_{date_time}.jpg"
+
+    cv2.imwrite(os.path.join(output_directory, image_filename), frame)
     global failed_attempts  # Use the global keyword to access the global failed_attempts variable
     print("Sending frame to user...")
-    # Define your Twilio account SID and auth token
-    # account_sid = keys.account_sid
-    # auth_token = keys.auth_token
+
     account_sid = keys.account_sid
     auth_token = keys.auth_token
     client = Client(account_sid, auth_token)
     
     cv2.imwrite("frame.jpg", frame)
-    message = client.messages.create(
-    from_='+18772372040',
-    body='Cat authentication failed, please check your cat door!',
-    to='+14083915281'
-    )
-
-    print(message.sid)
-
+    try:
+        message = client.messages.create(
+        from_='+18772372040',
+        body='Cat authentication failed, please check your cat door!',
+        to='+14083915281'
+        )
+        print(message.sid)
+    except:
+        print("Error sending message")
+   
 
 def hello():
     print("Hello World!") 
