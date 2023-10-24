@@ -1,3 +1,4 @@
+'''
 # import cv2
 # import time
 # import threading
@@ -139,7 +140,7 @@
 # if __name__ == "__main__":
 #     capture_frames()
 #     app.run(host='0.0.0.0', port=5000, threaded=True)
-
+'''
 
 
 import cv2
@@ -156,10 +157,6 @@ app = Flask(__name__)
 
 # Define a global variable switch and initialize it as False
 switch = False
-
-# Define the reference_cat_images as a global variable
-reference_cat_images = ["cropped/1.jpg", "cropped/2.jpg", "cropped/3.jpg"]
-
 
 
 # Define a function to print numbers from 1 to 10
@@ -212,6 +209,14 @@ def signin():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+#save image into cropped folder
+@app.route('/upload', methods=['POST'])
+def upload():
+    if(request.method == 'POST'):
+        f = request.files['image']
+        f.save('cropped/' + f.filename)
+        return jsonify({"message": "Image uploaded successfully"})
+
 # Arduino signal function
 def send_signal_to_arduino():
     # Implement the logic to send a signal to the Arduino to open the door when a cat is detected
@@ -227,6 +232,14 @@ def capture_frames():
     first_time_delay = 25
     first_time_start = None 
     first_time_sent = True 
+    directory_path = "cropped"
+    file_names = os.listdir(directory_path)
+    # # Define the reference_cat_images as a global variable
+    reference_cat_images = os.listdir(directory_path)
+    for i in range(len(reference_cat_images)):
+        reference_cat_images[i] =  directory_path + '/' + reference_cat_images[i]
+    # reference_cat_images = ["cropped/1.jpg", "cropped/2.jpg", "cropped/3.jpg"]
+
     print("hello")
     while True:
         ret, frame = camera.read()
@@ -410,3 +423,4 @@ if __name__ == "__main__":
     
     # Start the Flask server
     app.run(host='0.0.0.0', port=5000, threaded=True)
+
