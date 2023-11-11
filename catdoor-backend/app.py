@@ -147,7 +147,7 @@ import cv2
 import time
 import threading
 from skimage.metrics import structural_similarity as ssim
-from flask import Flask, Response, request, jsonify
+from flask import Flask, Response, request, jsonify, redirect, url_for
 from twilio.rest import Client
 import firebase_admin
 from firebase_admin import credentials, auth
@@ -167,7 +167,7 @@ def print_numbers():
 
 # Initialize the camera
 camera = cv2.VideoCapture(0)
-
+camera_lock = threading.Lock()
 # Initialize the ORB detector
 orb = cv2.ORB_create()
 
@@ -232,7 +232,7 @@ def capture_frames():
     first_time_delay = 25
     first_time_start = None 
     first_time_sent = True 
-    directory_path = "cropped"
+    directory_path = "generated"
     file_names = os.listdir(directory_path)
     # # Define the reference_cat_images as a global variable
     reference_cat_images = os.listdir(directory_path)
@@ -366,7 +366,7 @@ def capture_frames():
         # Yield the frame (for future use if needed)
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
+    
 @app.route('/')
 def index():
     return "Welcome to the cat detection and door opening system!"
@@ -374,7 +374,15 @@ def index():
 #get the frame sent by the camera
 @app.route('/video_feed')
 def video_feed():
-    return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    # return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    global camera
+
+    if camera_lock.locked():
+        return "Camera is busy"
+    
+    with camera_lock:
+        ret, frame = camera.read()
+        return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/open_door")
 def open_door():
@@ -412,6 +420,75 @@ def send_frame_to_user(frame):
     except:
         print("Error sending message")
    
+
+def registerCat():
+    global camera
+
+    if camera_lock.locked():
+        return "Camera is busy"
+    
+    with camera_lock:
+        cat_count = 0
+        output_directory = "generated"
+
+        # Ensure the output directory exists
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+
+        # Load the cat face cascade classifier
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalcatface.xml")
+
+        while cat_count < 10:
+            ret, frame = camera.read()
+
+            # Convert the frame to grayscale for face detection
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Detect cat faces in the frame
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            for (x, y, w, h) in faces:
+                # Extract the detected cat face
+                captured_cat_face = gray[y:y + h, x:x + w]
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                # Save the cat face as an image with a sequential name
+                cat_count += 1
+                image_filename = os.path.join(output_directory, str(cat_count) + ".jpg")
+                cv2.imwrite(image_filename, captured_cat_face)
+                
+            if cat_count >= 10:
+                break
+                
+
+        # Encode the frame as JPEG
+        _, encoded_frame = cv2.imencode('.jpg', frame)
+        frame_bytes = encoded_frame.tobytes()
+
+        # Yield the frame (for future use if needed)
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+    camera.release()
+    return "Cat registration complete"
+@app.route('/register_cat')
+def video_regcat():
+    # return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    global camera
+
+    if camera_lock.locked():
+        return "Camera is busy"
+    
+    with camera_lock:
+        ret, frame = camera.read()
+        return Response(registerCat(), mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.route('/other_url')
+def other_url():
+    global camera_lock
+
+    # Explicitly release the lock
+    if camera_lock.locked():
+        camera_lock.release()
+
+    return redirect(url_for('index'))
 
 def hello():
     print("Hello World!") 

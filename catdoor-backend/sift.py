@@ -163,4 +163,8 @@ class MyClass:
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 
-MyClass.capture_frames()
+def main():
+    MyClass.capture_frames()
+
+if __name__ == "__main__":
+    main()
