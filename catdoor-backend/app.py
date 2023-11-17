@@ -153,6 +153,7 @@ import firebase_admin
 from firebase_admin import credentials, auth
 import keys
 import os 
+import serial
 app = Flask(__name__)
 
 # Define a global variable switch and initialize it as False
@@ -165,16 +166,18 @@ def print_numbers():
     switch = True
     return switch
 
+ser = ""
 # Initialize the camera
 camera = cv2.VideoCapture(0)
 camera_lock = threading.Lock()
 # Initialize the ORB detector
 orb = cv2.ORB_create()
-
+user = None
 cred = credentials.Certificate('credentials.json')  # Replace with your Firebase Admin SDK JSON file
 firebase_admin.initialize_app(cred)
 @app.route('/register', methods=['POST'])
 def register():
+    global user 
     try:
         request_data = request.get_json()
         email = request_data.get('email')
@@ -190,39 +193,42 @@ def register():
 
 @app.route('/signin', methods=['POST'])
 def signin():
+    global user 
     try:
-        request_data = request.get_json()
-        email = request_data.get('email')
-        password = request_data.get('password')
+        if user is not None:
+            return jsonify({"uid": user.uid})
+        else:
+            request_data = request.get_json()
+            email = request_data.get('email')
+            password = request_data.get('password')
 
-        # Sign in the user using Firebase Authentication
-        user = auth.get_user_by_email(email)
-        # Check if the provided password matches the stored password
-        auth.update_user(
-            user.uid,
-            email=email,
-            password=password
-        )
+            # Sign in the user using Firebase Authentication
+            user = auth.get_user_by_email(email)
 
-        # Return the user's Firebase UID
-        return jsonify({"uid": user.uid})
+            # Use Firebase authentication method to sign in the user
+            signed_in_user = auth.sign_in_with_email_and_password(email, password)
+
+            # Return the user's Firebase UID
+            return jsonify({"uid": signed_in_user['localId']})
     except Exception as e:
         return jsonify({"error": str(e)})
 
-#save image into cropped folder
-@app.route('/upload', methods=['POST'])
-def upload():
-    if(request.method == 'POST'):
-        f = request.files['image']
-        f.save('cropped/' + f.filename)
-        return jsonify({"message": "Image uploaded successfully"})
+@app.route('/logout', methods=['POST'])
+def logout():
+    global user 
+    if user is not None:
+        # Use Firebase authentication method to sign out the user
+        auth.logout()
+
+        # Set the user variable to None
+        user = None
+
+    return jsonify({"message": "User logged out"})
 
 # Arduino signal function
 def send_signal_to_arduino():
-    # Implement the logic to send a signal to the Arduino to open the door when a cat is detected
-    # You can use libraries like pySerial to communicate with the Arduino
-    return "hi"
-
+    ser.write(b'1') 
+    ser.close()
 # Continuously capture frames and process them
 def capture_frames():
     global switch
@@ -493,11 +499,7 @@ def other_url():
 def hello():
     print("Hello World!") 
 if __name__ == "__main__":
-    # Start capturing frames in a separate thread when the Flask server starts
-    capture_thread = threading.Thread(target=hello)
-    capture_thread.daemon = True
-    capture_thread.start()
-    
+    # Start capturing frames in a separate thread when the Flask server starts    
     # Start the Flask server
     app.run(host='0.0.0.0', port=5000, threaded=True)
 
