@@ -14,7 +14,7 @@
 # reference_cat_images = ["cropped/1.jpg", "cropped/2.jpg", "cropped/3.jpg"]
 
 # # Define a function to print numbers from 1 to 10
-# def print_numbers():
+# def send_signal():
 #     global switch  # Use the global keyword to modify the global switch variable
 #     switch = True
 #     return switch
@@ -93,7 +93,7 @@
 #                 similarity_score = max_orb_matches + sum(ssim_scores)
 #                 if similarity_score > 60:  # Adjust the threshold as needed
 #                     cv2.putText(frame, "Authenticated", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-#                     number_thread = threading.Thread(target=print_numbers)
+#                     number_thread = threading.Thread(target=send_signal)
 #                     number_thread.start()
 #                     time.sleep(5)
 #                     global switch  # Declare switch as global before modifying it
@@ -154,17 +154,50 @@ from firebase_admin import credentials, auth
 import keys
 import os 
 import serial
+import pyrebase
+import RPi.GPIO as GPIO
+import time
+
+
 app = Flask(__name__)
 
+firebase_config = {
+    "apiKey": "AIzaSyAZx-aHNkVmADTd-ka_5qOxMKk5a45_CWI",
+    "authDomain": "catdoor-b597c.firebaseapp.com",
+    "projectId": "catdoor-b597c",
+    "storageBucket": "catdoor-b597c.appspot.com",
+    "messagingSenderId": "810484497038",
+    "appId": "1:810484497038:web:d3f0892ac43715b7e967df",
+    "measurementId": "G-3NW7F31SBZ",
+    "databaseURL": ""
+}
+
+firebase = pyrebase.initialize_app(firebase_config)
+auth2 = firebase.auth()
 # Define a global variable switch and initialize it as False
 switch = False
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(14, GPIO.OUT) 
+GPIO.output(14, GPIO.LOW) 
 
 
-# Define a function to print numbers from 1 to 10
-def print_numbers():
-    global switch  # Use the global keyword to modify the global switch variable
-    switch = True
-    return switch
+
+# Function to send signal to door 
+def send_signal():
+    global switch
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(14, GPIO.OUT) 
+    try:
+        while True:
+            GPIO.output(14, GPIO.HIGH)
+            time.sleep(1)
+            GPIO.output(14, GPIO.LOW) 
+            time.sleep(1)
+            switch = True
+            break
+
+    except KeyboardInterrupt:
+        GPIO.cleanup()
 
 ser = ""
 # Initialize the camera
@@ -173,8 +206,8 @@ camera_lock = threading.Lock()
 # Initialize the ORB detector
 orb = cv2.ORB_create()
 user = None
-cred = credentials.Certificate('credentials.json')  # Replace with your Firebase Admin SDK JSON file
-firebase_admin.initialize_app(cred)
+# cred = credentials.Certificate('credentials.json')  # Replace with your Firebase Admin SDK JSON file
+# firebase_admin.initialize_app(cred)
 @app.route('/register', methods=['POST'])
 def register():
     global user 
@@ -184,32 +217,25 @@ def register():
         password = request_data.get('password')
 
         # Create a new user account using Firebase Authentication
-        user = auth.create_user(email=email, password=password)
+        user = auth2.create_user_with_email_and_password(email,password)
 
         # Return the user's Firebase UID
-        return jsonify({"uid": user.uid})
+        return jsonify({"uid": user['localId']})
     except Exception as e:
         return jsonify({"error": str(e)})
 
 @app.route('/signin', methods=['POST'])
 def signin():
-    global user 
     try:
-        if user is not None:
-            return jsonify({"uid": user.uid})
-        else:
-            request_data = request.get_json()
-            email = request_data.get('email')
-            password = request_data.get('password')
+        request_data = request.get_json()
+        email = request_data.get('email')
+        password = request_data.get('password')
 
-            # Sign in the user using Firebase Authentication
-            user = auth.get_user_by_email(email)
+        # Sign in the user using Firebase Authentication
+        signed_in_user = auth2.sign_in_with_email_and_password(email, password)
 
-            # Use Firebase authentication method to sign in the user
-            signed_in_user = auth.sign_in_with_email_and_password(email, password)
-
-            # Return the user's Firebase UID
-            return jsonify({"uid": signed_in_user['localId']})
+        # Return the user's Firebase UID
+        return jsonify({"uid": signed_in_user['localId']})
     except Exception as e:
         return jsonify({"error": str(e)})
 
@@ -225,10 +251,7 @@ def logout():
 
     return jsonify({"message": "User logged out"})
 
-# Arduino signal function
-def send_signal_to_arduino():
-    ser.write(b'1') 
-    ser.close()
+
 # Continuously capture frames and process them
 def capture_frames():
     global switch
@@ -306,7 +329,7 @@ def capture_frames():
                 print(similarity_score)
                 if similarity_score > 60:  # Adjust the threshold as needed
                     cv2.putText(frame, "Authenticated", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    number_thread = threading.Thread(target=print_numbers)
+                    number_thread = threading.Thread(target=send_signal)
                     number_thread.start()
                     time.sleep(5)
                     global switch  # Declare switch as global before modifying it
@@ -314,7 +337,7 @@ def capture_frames():
                         print("Switch is true")
                         number_thread.join()
                         print("Success")
-                        send_signal_to_arduino()  # Send signal to Arduino to open the door
+                        switch = False
                     else:
                         switch = False
                         print("Switch is False")
