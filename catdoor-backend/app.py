@@ -1,148 +1,3 @@
-'''
-# import cv2
-# import time
-# import threading
-# from skimage.metrics import structural_similarity as ssim
-# from flask import Flask, Response
-
-# app = Flask(__name__)
-
-# # Define a global variable switch and initialize it as False
-# switch = False
-
-# # Define the reference_cat_images as a global variable
-# reference_cat_images = ["cropped/1.jpg", "cropped/2.jpg", "cropped/3.jpg"]
-
-# # Define a function to print numbers from 1 to 10
-# def send_signal():
-#     global switch  # Use the global keyword to modify the global switch variable
-#     switch = True
-#     return switch
-
-# # Initialize the camera
-# camera = cv2.VideoCapture(0)
-
-# # Initialize the ORB detector
-# orb = cv2.ORB_create()
-
-# # Arduino signal function
-# def send_signal_to_arduino():
-#     # Implement the logic to send a signal to the Arduino to open the door when a cat is detected
-#     # You can use libraries like pySerial to communicate with the Arduino
-#     return "hi"
-
-# # Continuously capture frames and process them
-# def capture_frames():
-#     global switch  # Use the global keyword to access the global switch variable
-#     print("hello")
-#     while True:
-#         ret, frame = camera.read()
-
-#         # Convert the frame to grayscale for face detection
-#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-#         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalcatface.xml")
-#         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
-#         for (x, y, w, h) in faces:
-#             # Extract the detected cat face
-#             captured_cat_face = gray[y:y + h, x:x + w]
-
-#             # Initialize an empty list to store SSIM scores
-#             ssim_scores = []
-
-#             # Initialize an empty list to store ORB keypoints and descriptors
-#             orb_keypoints = []
-#             orb_descriptors = []
-
-#             for reference_cat_image_path in reference_cat_images:
-#                 # Load the reference cat image
-#                 pic_of_cat = cv2.imread(reference_cat_image_path, cv2.IMREAD_GRAYSCALE)
-#                 pic_of_cat = cv2.resize(pic_of_cat, (w, h))
-#                 captured_cat_face = cv2.resize(captured_cat_face, pic_of_cat.shape[::-1])
-
-#                 # Calculate SSIM between the two images
-#                 similarity_index_value = ssim(pic_of_cat, captured_cat_face)
-
-#                 # Store SSIM score
-#                 ssim_scores.append(similarity_index_value)
-
-#                 # Detect ORB keypoints and compute descriptors for the reference image
-#                 reference_keypoints, reference_descriptor = orb.detectAndCompute(pic_of_cat, None)
-#                 orb_keypoints.append(reference_keypoints)
-#                 orb_descriptors.append(reference_descriptor)
-
-#             # Determine the dynamic threshold based on statistical analysis of SSIM scores
-#             if sum(ssim_scores) / len(ssim_scores) > 0.4:
-#                 # Detect ORB keypoints and compute descriptors for the captured cat face
-#                 keypoints, captured_descriptor = orb.detectAndCompute(captured_cat_face, None)
-
-#                 # Match ORB descriptors between the captured face and each reference image
-#                 orb_matches = []
-#                 for reference_descriptor in orb_descriptors:
-#                     # Use a matching algorithm (e.g., BFMatcher) to find matches between descriptors
-#                     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-#                     matches = bf.match(reference_descriptor, captured_descriptor)
-
-#                     # Sort the matches by distance (smaller distance indicates a better match)
-#                     matches = sorted(matches, key=lambda x: x.distance)
-#                     orb_matches.append(matches)
-
-#                 # Compute a similarity score based on the number of good ORB matches and SSIM score
-#                 max_orb_matches = max(len(matches) for matches in orb_matches)
-#                 similarity_score = max_orb_matches + sum(ssim_scores)
-#                 if similarity_score > 60:  # Adjust the threshold as needed
-#                     cv2.putText(frame, "Authenticated", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-#                     number_thread = threading.Thread(target=send_signal)
-#                     number_thread.start()
-#                     time.sleep(5)
-#                     global switch  # Declare switch as global before modifying it
-#                     if switch:
-#                         print("Switch is true")
-#                         number_thread.join()
-#                         print("Success")
-#                         send_signal_to_arduino()  # Send signal to Arduino to open the door
-#                     else:
-#                         switch = False
-#                         print("Switch is False")
-#                 else:
-#                     cv2.putText(frame, "Incorrect Cat", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-#             else:
-#                 cv2.putText(frame, "InCorrect Cat", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-#             # Draw a rectangle around the detected cat face
-#             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-#         # Encode the frame as JPEG
-#         _, encoded_frame = cv2.imencode('.jpg', frame)
-#         frame_bytes = encoded_frame.tobytes()
-
-#         # Yield the frame (for future use if needed)
-#         yield (b'--frame\r\n'
-#                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-# # Start capturing frames in a separate thread when the Flask server starts
-
-
-# @app.route('/')
-# def index():
-#     return "Welcome to the cat detection and door opening system!"
-
-# @app.route('/video_feed')
-# def video_feed():
-#     return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
-# def start_capture():
-#     return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-# if __name__ == "__main__":
-#     capture_frames()
-#     app.run(host='0.0.0.0', port=5000, threaded=True)
-'''
-
-
 import cv2
 import time
 import threading
@@ -161,6 +16,7 @@ import time
 
 app = Flask(__name__)
 
+#Variables
 firebase_config = {
     "apiKey": "AIzaSyAZx-aHNkVmADTd-ka_5qOxMKk5a45_CWI",
     "authDomain": "catdoor-b597c.firebaseapp.com",
@@ -181,9 +37,20 @@ GPIO.setup(14, GPIO.OUT)
 GPIO.output(14, GPIO.LOW) 
 
 
+ser = ""
+# Initialize the camera
+camera = cv2.VideoCapture(0)
+camera_lock = threading.Lock()
+# Initialize the ORB detector
+orb = cv2.ORB_create()
+user = None
+IMAGE_FOLDER = 'generated'
 
-# Function to send signal to door 
 def send_signal():
+    """
+    Function to send a signal to the door using GPIO.
+    This function sets the global switch variable to True during the signal transmission.
+    """
     global switch
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(14, GPIO.OUT) 
@@ -199,17 +66,15 @@ def send_signal():
     except KeyboardInterrupt:
         GPIO.cleanup()
 
-ser = ""
-# Initialize the camera
-camera = cv2.VideoCapture(0)
-camera_lock = threading.Lock()
-# Initialize the ORB detector
-orb = cv2.ORB_create()
-user = None
-# cred = credentials.Certificate('credentials.json')  # Replace with your Firebase Admin SDK JSON file
-# firebase_admin.initialize_app(cred)
+    
 @app.route('/register', methods=['POST'])
 def register():
+    """
+    Endpoint to register a new user using Firebase Authentication.
+    Expects JSON data with 'email' and 'password' fields.
+    Returns:
+        JSON response containing the user's Firebase UID.
+    """
     global user 
     try:
         request_data = request.get_json()
@@ -226,6 +91,12 @@ def register():
 
 @app.route('/signin', methods=['POST'])
 def signin():
+    """
+    Endpoint to sign in a user using Firebase Authentication.
+    Expects JSON data with 'email' and 'password' fields.
+    Returns:
+        JSON response containing the signed-in user's Firebase UID.
+    """
     try:
         request_data = request.get_json()
         email = request_data.get('email')
@@ -241,6 +112,11 @@ def signin():
 
 @app.route('/logout', methods=['POST'])
 def logout():
+    """
+    Endpoint to log out a user using Firebase Authentication.
+    Returns:
+        JSON response indicating successful user logout.
+    """
     global user 
     if user is not None:
         # Use Firebase authentication method to sign out the user
@@ -254,6 +130,12 @@ def logout():
 
 # Continuously capture frames and process them
 def capture_frames():
+    """
+    Continuously captures frames, processes them, and detects cat faces.
+    Uses the ORB algorithm and SSIM for cat face recognition.
+    Returns:
+        Frame as a multipart response with JPEG content type.
+    """
     global switch
     failed_attempts = 0
     max_failed_attempts = 20
@@ -403,7 +285,11 @@ def index():
 #get the frame sent by the camera
 @app.route('/video_feed')
 def video_feed():
-    # return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    """
+    Endpoint to stream video feed with cat face detection.
+    Returns:
+        Multipart response with video frames.
+    """    
     global camera
 
     if camera_lock.locked():
@@ -422,6 +308,12 @@ def open_door():
 
 # Function to send the frame to the user using Twilio
 def send_frame_to_user(frame):
+    """
+    Sends a captured cat frame to the user using Twilio.
+    The frame is saved as an image and sent as a message if authentication fails.
+    Args:
+        frame: Captured cat face frame.
+    """
     output_directory = "failed"
 
     # Make sure the directory exists, if not, create it
@@ -451,6 +343,12 @@ def send_frame_to_user(frame):
    
 
 def registerCat():
+    """
+    Captures and registers cat faces for authentication.
+    Saves the captured cat faces in the 'generated' directory.
+    Returns:
+        Frame as a multipart response with JPEG content type.
+    """
     global camera
 
     if camera_lock.locked():
@@ -500,7 +398,11 @@ def registerCat():
     return "Cat registration complete"
 @app.route('/register_cat')
 def video_regcat():
-    # return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    """
+    Endpoint to stream video feed for cat registration.
+    Returns:
+        Multipart response with video frames.
+    """    
     global camera
 
     if camera_lock.locked():
@@ -511,6 +413,10 @@ def video_regcat():
         return Response(registerCat(), mimetype='multipart/x-mixed-replace; boundary=frame')
 @app.route('/other_url')
 def other_url():
+    """
+    Endpoint to release the camera lock explicitly.
+    Redirects to the 'index' endpoint.
+    """
     global camera_lock
 
     # Explicitly release the lock
@@ -519,8 +425,81 @@ def other_url():
 
     return redirect(url_for('index'))
 
-def hello():
-    print("Hello World!") 
+IMAGE_FOLDER = "generated"
+
+def read_image_as_base64(image_path):
+    """
+    Reads an image file and encodes it as base64.
+    Args:
+        image_path: Path to the image file.
+    Returns:
+        Base64-encoded image.
+    """
+    with open(image_path, "rb") as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+    return encoded_image
+
+@app.route('/getImagesBase64')
+def get_images64():
+    """
+    Endpoint to get a list of all JPEG images encoded as base64.
+    Returns:
+        JSON response with image filenames and corresponding base64-encoded images.
+    """
+    try:
+        # Get the list of all files in the IMAGE_FOLDER
+        image_files = [f for f in os.listdir(IMAGE_FOLDER) if f.lower().endswith(('.jpg', '.jpeg'))]
+
+        # Read each image file and encode as base64
+        images_data = {}
+        for image_file in image_files:
+            image_path = os.path.join(IMAGE_FOLDER, image_file)
+            images_data[image_file] = read_image_as_base64(image_path)
+
+        return jsonify(images_data)
+    except Exception as e:
+        return str(e), 500
+
+@app.route('/getImages/<image_name>')
+def get_an_image(image_name):
+    """
+    Endpoint to get a specific image file.
+    Args:
+        image_name: Name of the image file.
+    Returns:
+        Image file as binary data.
+    """
+    try:
+        # Ensure the requested image is within the allowed extensions
+        if image_name.lower().endswith(('.jpg', '.jpeg')):
+            # Build the path to the image
+            image_path = os.path.join(IMAGE_FOLDER, image_name)
+            
+            # Check if the file exists
+            if os.path.isfile(image_path):
+                # Return the image as binary data
+                return send_file(image_path, mimetype='image/jpeg')
+            else:
+                return "Image not found", 404
+        else:
+            return "Invalid image format", 400
+    except Exception as e:
+        return str(e), 500
+
+@app.route('/getImages')
+def get_images_list():
+    """
+    Endpoint to get a list of all JPEG images in the IMAGE_FOLDER.
+    Returns:
+        JSON response containing a list of image filenames.
+    """
+    try:
+        # Get the list of all files in the IMAGE_FOLDER
+        image_files = [f for f in os.listdir(IMAGE_FOLDER) if f.lower().endswith(('.jpg', '.jpeg'))]
+        return jsonify(image_files)
+    except Exception as e:
+        return str(e), 500
+    s
 if __name__ == "__main__":
     # Start capturing frames in a separate thread when the Flask server starts    
     # Start the Flask server
