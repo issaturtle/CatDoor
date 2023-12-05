@@ -1,0 +1,3 @@
+[submodule "CatDoorMobile"]
+	path = CatDoorMobile
+	url = https://github.com/Surafelgit/CatDoorMobile.git
