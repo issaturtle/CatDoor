@@ -83,7 +83,7 @@ Before running the system, ensure that these critereas are met:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/CatDoorMobile.git
+   git clone https://github.com/Surafelgit/CatDoorMobile.git
 
 
 3. **Installation of any packages is not neccessary since everything is configured in the AndroidManifest.xml and build.gradle files**
