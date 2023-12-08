@@ -30,7 +30,7 @@ Before running the system, ensure you have the following dependencies installed:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/cat-door-system.git
+   git clone [https://github.com/yourusername/cat-door-system.git](https://github.com/issaturtle/CatDoor.git)
 2. **Make a Virtual Environment by following**
    ```bash
     https://www.freecodecamp.org/news/how-to-setup-virtual-environments-in-python/
